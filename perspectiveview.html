@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>天体运行模拟 - 侧视图</title>
+    <style>
+        body {
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        canvas {
+            display: block;
+            margin: 20px auto;
+            background: #000;
+            border: 1px solid #333;
+        }
+
+        .controls {
+            margin: 10px;
+        }
+
+        button {
+            padding: 6px 12px;
+            margin: 0 6px;
+        }
+        select {
+            padding: 6px;
+            margin: 0 6px;
+        }
+    </style>
+</head>
+<body>
+    <h1>天体运行模拟 - 侧视图</h1>
+    <canvas id="universe" width="900" height="600"></canvas>
+    <div class="controls">
+        <button onclick="toggleAnimation()">暂停/继续</button>
+        <label for="viewSelector">选择视角：</label>
+        <select id="viewSelector" onchange="switchView()">
+            <option value="index.html">俯视图</option>
+            <option value="perspectiveview.html" selected>侧视图</option>
+        </select>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("universe");
+        const ctx = canvas.getContext("2d");
+
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+
+        let running = true;
+        let time = 0;
+
+        const sun = { radius: 50, color: "#f6b73c" };
+        const earth = {
+            orbitRadius: 200,
+            radius: 20,
+            color: "blue",
+            orbitSpeed: 0.01,
+            rotateSpeed: 0.1
+        };
+        const moon = {
+            orbitRadius: 40,
+            radius: 6,
+            color: "gray",
+            orbitSpeed: 0.05,
+            rotateSpeed: 0.2
+        };
+
+        // 模拟透视投影：缩放与Z值（简化）
+        function project(x, y, z) {
+            const scale = 300 / (z + 400); // z 越大越远
+            return {
+                x: cx + x * scale,
+                y: cy + y * scale,
+                scale: scale
+            };
+        }
+
+        // 背景星空
+        const stars = Array.from({ length: 600 }, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 1.5
+        }));
+
+        // 小行星带粒子
+        const asteroids = Array.from({ length: 400 }, () => {
+            const angle = Math.random() * 2 * Math.PI;
+            const radius = 300 + Math.random() * 100;
+            const height = (Math.random() - 0.5) * 100;
+            return {
+                x: radius * Math.cos(angle),
+                y: height,
+                z: radius * Math.sin(angle)
+            };
+        });
+
+        function drawStars() {
+            ctx.fillStyle = "white";
+            stars.forEach(s => {
+                ctx.fillRect(s.x, s.y, s.size, s.size);
+            });
+        }
+
+        function drawAsteroids() {
+            ctx.fillStyle = "rgba(180,150,120,0.6)";
+            asteroids.forEach(a => {
+                const { x, y } = project(a.x, a.y, a.z);
+                ctx.fillRect(x, y, 1.2, 1.2);
+            });
+        }
+
+        function drawPlanet(x, y, z, radius, color, label) {
+            const p = project(x, y, z);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, radius * p.scale, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.strokeStyle = "#aaa";
+            ctx.stroke();
+            ctx.fillStyle = "white";
+            ctx.font = "12px sans-serif";
+            ctx.fillText(label, p.x + 6, p.y);
+        }
+
+        function drawOrbit(centerX, centerY, centerZ, radius, segments = 100) {
+            ctx.beginPath();
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i / segments) * 2 * Math.PI;
+                const x = centerX + radius * Math.cos(angle);
+                const z = centerZ + radius * Math.sin(angle);
+                const p = project(x, 0, z);
+                if (i === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            }
+            ctx.strokeStyle = "rgba(255,255,255,0.1)";
+            ctx.stroke();
+        }
+
+        function drawScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawStars();
+            drawAsteroids();
+
+            // 太阳在中心
+            drawPlanet(0, 0, 0, sun.radius, sun.color, "太阳");
+
+            // 地球轨道
+            drawOrbit(0, 0, 0, earth.orbitRadius);
+
+            // 地球位置
+            const earthAngle = time * earth.orbitSpeed;
+            const earthX = earth.orbitRadius * Math.cos(earthAngle);
+            const earthZ = earth.orbitRadius * Math.sin(earthAngle);
+            drawPlanet(earthX, 0, earthZ, earth.radius, earth.color, "地球");
+
+            // 月球轨道
+            drawOrbit(earthX, 0, earthZ, moon.orbitRadius);
+
+            // 月球位置
+            const moonAngle = time * moon.orbitSpeed;
+            const moonX = earthX + moon.orbitRadius * Math.cos(moonAngle);
+            const moonZ = earthZ + moon.orbitRadius * Math.sin(moonAngle);
+            drawPlanet(moonX, 0, moonZ, moon.radius, moon.color, "月球");
+        }
+
+        function animate() {
+            if (running) {
+                time += 1;
+                drawScene();
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function toggleAnimation() {
+            running = !running;
+        }
+        function switchView() {
+            const view = document.getElementById("viewSelector").value;
+            window.location.href = view;
+        }
+
+        animate();
+    </script>
+</body>
+</html>
