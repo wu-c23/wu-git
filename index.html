@@ -26,15 +26,22 @@
             margin: 0 5px;
             padding: 6px 12px;
         }
+        select {
+            padding: 6px;
+            margin: 0 6px;
+        }
     </style>
 </head>
 <body>
     <h1>天体运行模拟 - 俯视图</h1>
-    <canvas id="universe" width="800" height="800"></canvas>
+    <canvas id="universe" width="900" height="600"></canvas>
     <div class="controls">
-        <button onclick="toggleAnimation()">
-            暂停/继续
-        </button>
+        <button onclick="toggleAnimation()">暂停/继续</button>
+        <label for="viewSelector">选择视角：</label>
+        <select id="viewSelector" onchange="switchView()">
+            <option value="index.html"selected>俯视图</option>
+            <option value="perspectiveview.html" > 侧视图</option>
+        </select>
     </div>
 
     <script>
@@ -120,6 +127,10 @@
             running = !running;
         }
 
+        function switchView() {
+            const view = document.getElementById("viewSelector").value;
+            window.location.href = view;
+        }
         // 启动动画
         animate();
     </script>
