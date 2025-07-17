@@ -18,14 +18,16 @@ class CelestialSimulator {
             angle: 0,
             distance: 200,
             rotationSpeed: 0.02,
-            orbitSpeed: 0.005
+            orbitSpeed: 0.005,
+            orbitAngle: 0 // 添加初始轨道角度
         };
         this.moon = {
             radius: 8,
             angle: 0,
             distance: 50,
             rotationSpeed: 0.03,
-            orbitSpeed: 0.03
+            orbitSpeed: 0.06,
+            orbitAngle: 0 // 添加初始轨道角度
         };
 
         // 3D场景初始化
@@ -130,7 +132,6 @@ class CelestialSimulator {
     initEvents() {
         document.getElementById('viewMode').addEventListener('change', (e) => {
             this.viewMode = e.target.value;
-            // 切换视图时显示/隐藏3D渲染器
             if (this.viewMode === '3d') {
                 this.renderer.domElement.style.display = 'block';
                 this.canvas.style.display = 'none';
@@ -139,15 +140,15 @@ class CelestialSimulator {
                 this.canvas.style.display = 'block';
             }
         });
-        //速度
+
         document.getElementById('timeSpeed').addEventListener('input', (e) => {
             this.timeScale = parseInt(e.target.value);
         });
-        //皮肤
+
         document.getElementById('earthTexture').addEventListener('change', (e) => {
             this.earthTexture = e.target.value;
         });
-        //画中画
+
         document.getElementById('toggleEclipse').addEventListener('click', () => {
             this.showEclipse = !this.showEclipse;
             document.getElementById('pipContainer').style.display =
@@ -195,10 +196,10 @@ class CelestialSimulator {
 
         this.sun.angle += this.sun.rotationSpeed * timeFactor;
         this.earth.angle += this.earth.rotationSpeed * timeFactor;
-        this.earth.orbitAngle = (this.earth.orbitAngle || 0) + this.earth.orbitSpeed * timeFactor;
+        this.earth.orbitAngle += this.earth.orbitSpeed * timeFactor;
 
         this.moon.angle += this.moon.rotationSpeed * timeFactor;
-        this.moon.orbitAngle = (this.moon.orbitAngle || 0) + this.moon.orbitSpeed * timeFactor;
+        this.moon.orbitAngle += this.moon.orbitSpeed * timeFactor;
     }
 
     update3DScene() {
@@ -254,7 +255,7 @@ class CelestialSimulator {
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
 
-        // 绘制太阳 (固定在中心)
+        // 绘制太阳 
         this.drawSun(centerX, centerY);
 
         // 绘制地球轨道 
@@ -276,7 +277,7 @@ class CelestialSimulator {
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
         this.ctx.ellipse(
             earthX, earthY,
-            this.moon.distance, this.moon.distance * 0.3, // 椭圆轨道，Y轴压缩
+            this.moon.distance, this.moon.distance * 0.3, 
             0, 0, Math.PI * 2
         );
         this.ctx.stroke();
@@ -293,6 +294,7 @@ class CelestialSimulator {
         // 清除画布
         this.pipCtx.clearRect(0, 0, this.pipCanvas.width, this.pipCanvas.height);
 
+
         // 检查是否发生日/月食
         const isSolarEclipse = this.checkSolarEclipse();
         const isLunarEclipse = this.checkLunarEclipse();
@@ -303,7 +305,7 @@ class CelestialSimulator {
             this.drawLunarEclipse();
         }
     }
-    //简单绘制，暂时就用不同大小和颜色的球代替，后续可以把我写的删了扩展
+
     drawSun(x, y) {
         this.ctx.beginPath();
         this.ctx.fillStyle = '#ffff00';
@@ -331,21 +333,53 @@ class CelestialSimulator {
         this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         this.ctx.stroke();
     }
-    //下面四个函数是暂定写日食和月食的，这里还没写
-    checkSolarEclipse() {
-        
+
+    checkSolarEclipse() {//这个函数是AI生成用来测试画中画的，后续需要重写
+        const angleDiff = Math.abs(this.moon.orbitAngle - this.earth.orbitAngle) % (Math.PI * 2);
+        return angleDiff < 0.17 || angleDiff > (Math.PI * 2 - 0.17); // ~10度阈值
     }
 
     checkLunarEclipse() {
-       
+        
+        return false;
     }
 
-    drawSolarEclipse() {
+    drawSolarEclipse() {//这个函数是AI生成用来测试画中画的，后续需要重写
+        const pipCenterX = this.pipCanvas.width / 2;
+        const pipCenterY = this.pipCanvas.height / 2;
+
+        // 绘制太阳
+        this.pipCtx.beginPath();
+        this.pipCtx.fillStyle = '#ffff00';
+        this.pipCtx.arc(pipCenterX, pipCenterY, this.sun.radius * 0.5, 0, Math.PI * 2);
+        this.pipCtx.fill();
+
+        // 绘制月球遮挡
+        this.pipCtx.beginPath();
+        this.pipCtx.fillStyle = '#000000';
+        this.pipCtx.arc(pipCenterX, pipCenterY, this.moon.radius * 0.5, 0, Math.PI * 2);
+        this.pipCtx.fill();
+
+        // 添加日冕效果
+        this.pipCtx.beginPath();
+        this.pipCtx.strokeStyle = '#ffff00';
+        this.pipCtx.lineWidth = 2;
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const startX = pipCenterX + Math.cos(angle) * this.sun.radius * 0.5;
+            const startY = pipCenterY + Math.sin(angle) * this.sun.radius * 0.5;
+            const endX = pipCenterX + Math.cos(angle) * this.sun.radius * 0.7;
+            const endY = pipCenterY + Math.sin(angle) * this.sun.radius * 0.7;
+            this.pipCtx.moveTo(startX, startY);
+            this.pipCtx.lineTo(endX, endY);
+        }
+        this.pipCtx.stroke();
+
        
     }
 
     drawLunarEclipse() {
-       
+        
     }
 }
 
