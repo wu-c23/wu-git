@@ -10,7 +10,7 @@ class CelestialSimulator {
         this.viewMode = 'top';
         this.earthTexture = 'satellite';
         this.showEclipse = false;
-
+        this.isPaused = false;
         // 天体参数
         this.sun = { radius: 50, angle: 0, rotationSpeed: 0.01 };
         this.earth = {
@@ -154,9 +154,23 @@ class CelestialSimulator {
             document.getElementById('pipContainer').style.display =
                 this.showEclipse ? 'block' : 'none';
         });
+
+        document.getElementById('togglePause').addEventListener('click', () => {
+            this.isPaused = !this.isPaused;
+            document.getElementById('togglePause').textContent =
+                this.isPaused ? 'continue' : 'pause';
+            if (!this.isPaused) {
+                this.lastTime = performance.now(); 
+                this.animate(performance.now());
+            }
+        });
     }
 
     animate(timestamp) {
+        if (this.isPaused) {
+            return; // 如果暂停，直接返回不执行动画
+        }
+
         // 计算时间增量
         const deltaTime = timestamp - this.lastTime;
         this.lastTime = timestamp;
