@@ -1,0 +1,72 @@
+h1 {
+    text-align: center;
+    left: 50%;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #121212;
+    color: white;
+}
+
+.viewMode {
+    position: absolute;
+    top: 0;
+    left: 200px;
+}
+
+.speed {
+    position: absolute;
+    top: 0;
+    left: 400px;
+}
+
+.earthTexture {
+    position: absolute;
+    top: 0;
+    left: 700px;
+
+}
+
+.eclipseDisplay {
+    position: absolute;
+    top: 0;
+    left: 900px;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.simulation-container {
+    display: flex;
+    gap: 20px;
+}
+
+#mainCanvas {
+    border: 1px solid #333;
+    background-color: #000;
+}
+
+.controls {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 15px;
+    background-color: #222;
+    border-radius: 5px;
+}
+
+.pip-container {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    width: 300px;
+    height: 300px;
+    border: 1px solid #444;
+}

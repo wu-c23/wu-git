@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天体运行模拟</title>
+    <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>天体运行模拟</h1>
+
+        <div class="controls">
+            <div class="viewMode">
+                <label>视图模式:</label>
+                <select id="viewMode">
+                    <option value="top">俯视图</option>
+                    <option value="side">侧视图</option>
+                    <option value="3d">3D视图</option>
+                </select>
+            </div>
+
+            <div class="speed">
+                <label>时间速度:</label>
+                <input type="range" id="timeSpeed" min="1" max="100" value="10">
+            </div>
+
+            <div class="earthTexture">
+                <label>地球皮肤:</label>
+                <select id="earthTexture">
+                    <option value="satellite">卫星图</option>
+                    <option value="map">地图</option>
+                </select>
+            </div>
+
+            <button class="eclipseDisplay" id="toggleEclipse">显示日/月食</button>
+        </div>
+
+        <div class="simulation-container">
+            <canvas id="mainCanvas" width="800" height="600"></canvas>
+            <div class="pip-container" id="pipContainer" style="display: none;">
+                <canvas id="pipCanvas" width="300" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.135.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.135.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
