@@ -52,6 +52,14 @@ body {
     background-color: #000;
 }
 
+#pipContainer {
+    border: 1px solid #333;
+    background-color: #000;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+}
+
 .controls {
     position: relative;
     display: flex;
