@@ -366,14 +366,20 @@ class CelestialSimulator {
         this.ctx.stroke();
     }
     checkSolarEclipse() {
+        let angleDiff;
         // 太阳在原点（角度0），判断月球是否在地球和太阳之间（三者近似共线）
-        const angleDiff = Math.abs(this.moon.orbitAngle - this.earth.orbitAngle - Math.PI);
+        if (this.earth.orbitAngle >= 0 && this.earth.orbitAngle <= Math.PI) {
+            angleDiff = Math.abs(this.moon.orbitAngle - this.earth.orbitAngle - Math.PI);
+        }
+        else {
+            angleDiff = Math.abs(this.moon.orbitAngle - this.earth.orbitAngle + Math.PI);
+        }
         // 阈值设为0.1弧度（约5.7度），可根据需要调整
         return angleDiff < 0.5;
     }
 
     checkLunarEclipse() {
-        // 月食时，地球在太阳和月球之间（月球与太阳方向相反，角度差π）
+        // 月食时，地球在太阳和月球之间（月球与太阳方向相反）
         const angleDiff = Math.abs(this.moon.orbitAngle - this.earth.orbitAngle);
         return angleDiff < 0.5;
     }
