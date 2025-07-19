@@ -6,6 +6,68 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>天体运行模拟</title>
     <link rel="stylesheet" href="index.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #121212;
+            color: white;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .simulation-container {
+            display: flex;
+            gap: 20px;
+        }
+
+        #mainCanvas {
+            border: 1px solid #333;
+            background-color: #000;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 15px;
+            background-color: #222;
+            border-radius: 5px;
+        }
+
+        .pip-container {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            width: 300px;
+            height: 300px;
+            border: 2px solid #444;
+            background-color: #000;
+            z-index: 100;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            display: none;
+        }
+
+        .pip-container canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .eclipse-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+        }
+    </style>
 </head>
 
 <body>
@@ -26,7 +88,7 @@
                 <label>时间速度:</label>
                 <input type="range" id="timeSpeed" min="1" max="100" value="10">
             </div>
-
+          
             <div class="earthTexture">
                 <label>地球皮肤:</label>
                 <select id="earthTexture">
@@ -40,8 +102,9 @@
 
         <div class="simulation-container">
             <canvas id="mainCanvas" width="800" height="600"></canvas>
-            <div class="pip-container" id="pipContainer" style="display: none;">
+            <div class="pip-container" id="pipContainer">
                 <canvas id="pipCanvas" width="300" height="300"></canvas>
+                <div class="eclipse-label" id="eclipseLabel"></div>
             </div>
         </div>
     </div>
@@ -49,5 +112,4 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.135.0/examples/js/controls/OrbitControls.js"></script>
     <script src="script.js"></script>
 </body>
-
 </html>

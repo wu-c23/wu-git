@@ -5,73 +5,108 @@ class CelestialSimulator {
         this.pipCanvas = document.getElementById('pipCanvas');
         this.pipCtx = this.pipCanvas.getContext('2d');
 
-        // Ä£Äâ²ÎÊı
+        // æ¨¡æ‹Ÿå‚æ•°
         this.timeScale = 1;
         this.viewMode = 'top';
         this.earthTexture = 'satellite';
         this.showEclipse = false;
 
-        // ÌìÌå²ÎÊı
+        // å¤©ä½“å‚æ•°
         this.sun = { radius: 50, angle: 0, rotationSpeed: 0.01 };
         this.earth = {
             radius: 20,
             angle: 0,
             distance: 200,
+            semiMajorAxis: 200,
+            eccentricity: 0.0167,
             rotationSpeed: 0.02,
-            orbitSpeed: 0.005
+            orbitSpeed: 0.005,
+            orbitAngle: 0,
         };
         this.moon = {
-            radius: 8,
+         radius: 8,
             angle: 0,
-            distance: 50,
+            semiMajorAxis: 50,
+            eccentricity: 0.0554,
             rotationSpeed: 0.03,
-            orbitSpeed: 0.03
+            orbitSpeed: 0.03,
+            orbitAngle: 0,
         };
 
-        // 3D³¡¾°³õÊ¼»¯
+        // 3Dåœºæ™¯åˆå§‹åŒ–
         this.init3DScene();
 
-        // ³õÊ¼»¯UIÊÂ¼ş
+        // åˆå§‹åŒ–UIäº‹ä»¶
         this.initEvents();
 
-        // ¿ªÊ¼¶¯»­Ñ­»·
+        // å¼€å§‹åŠ¨ç”»å¾ªç¯
         this.lastTime = 0;
         this.animate(0);
     }
 
-    init3DScene() {
-        //Ê¹ÓÃµÚÈı·½¿âThree.js´´½¨³¡¾°
-        this.scene = new THREE.Scene();//È·±£Ïà»ú¿í¸ß±ÈÓëcanvasÒ»ÖÂ
-        this.camera = new THREE.PerspectiveCamera(
-            75,
-            this.canvas.width / this.canvas.height,
-            0.1,
-            1000);
-        this.renderer = new THREE.WebGLRenderer({
-            alpha: true,
-            antialias: true//¿¹¾â³İ£¬3DäÖÈ¾¸üÆ½»¬
-        });
-        this.renderer.setSize(this.canvas.width, this.canvas.height);
+    // è®¡ç®—æ¤­åœ†è½¨é“ä¸Šçš„ä½ç½®
+    getEllipticalPosition(semiMajorAxis, eccentricity, angle) {
+        // è®¡ç®—çœŸè¿‘ç‚¹è§’ï¼ˆä»è¿‘åœ°ç‚¹å¼€å§‹çš„è§’åº¦ï¼‰
+        const trueAnomaly = angle % (Math.PI * 2);
+        
+        // è®¡ç®—åŠçŸ­è½´
+        const semiMinorAxis = semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity);
+        
+        // è®¡ç®—ç„¦ç‚¹è·ç¦»
+        const focalDistance = semiMajorAxis * eccentricity;
+        
+        // è®¡ç®—æ¤­åœ†ä¸Šçš„åæ ‡ï¼ˆä»¥ä¸­å¿ƒä¸ºåŸç‚¹ï¼‰
+        const x = semiMajorAxis * Math.cos(trueAnomaly) - focalDistance;
+        const y = semiMinorAxis * Math.sin(trueAnomaly);
+        
+        // è®¡ç®—è·ç¦»ï¼ˆç”¨äºå¼€æ™®å‹’ç¬¬äºŒå®šå¾‹ï¼‰
+        const distance = semiMajorAxis * (1 - eccentricity * eccentricity) / 
+                        (1 + eccentricity * Math.cos(trueAnomaly));
+        
+        return { x, y, distance };
+    }
 
-        this.renderer.domElement.style.display = 'none'; // Ä¬ÈÏÒş²Ø
+    // æ–°å¢æ–¹æ³•ï¼šç»˜åˆ¶æ¤­åœ†è½¨é“
+    drawEllipticalOrbit(centerX, centerY, semiMajorAxis, eccentricity) {
+        const semiMinorAxis = semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity);
+        const focalDistance = semiMajorAxis * eccentricity;
+        
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        this.ctx.ellipse(
+            centerX + focalDistance, // æ¤­åœ†ä¸­å¿ƒåç§»
+            centerY,
+            semiMajorAxis,
+            semiMinorAxis,
+            0, 0, Math.PI * 2
+        );
+        this.ctx.stroke();
+    }
+
+    init3DScene() {
+        // ä½¿ç”¨ç¬¬ä¸‰æ–¹åº“Three.jsåˆ›å»ºåœºæ™¯
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(75, this.canvas.width / this.canvas.height, 0.1, 1000);
+        this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true});
+        this.renderer.setSize(this.canvas.width, this.canvas.height);
+        this.renderer.domElement.style.display = 'none'; // Ä¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         this.canvas.parentNode.insertBefore(this.renderer.domElement, this.canvas.nextSibling);
 
-        // ´´½¨¹ìµÀ¿ØÖÆÆ÷
+        // åˆ›å»ºè½¨é“æ§åˆ¶å™¨
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.25;
 
-        // ´´½¨3DÌìÌå
+        // åˆ›å»º3Då¤©ä½“
         this.create3DCelestialBodies();
 
-        // ÉèÖÃÏà»úÎ»ÖÃ
+        // è®¾ç½®ç›¸æœºä½ç½®
         this.camera.position.set(0, 300, 400);
         this.camera.lookAt(0, 0, 0);
     }
 
-    //ÈıÎ¬ÊÓÍ¼´´½¨ÌìÌå
     create3DCelestialBodies() {
-        // Ì«Ñô
+        // Ì«å¤ªé˜³
         const sunGeometry = new THREE.SphereGeometry(this.sun.radius, 32, 32);
         const sunMaterial = new THREE.MeshBasicMaterial({
             color: 0xffff00,
@@ -80,7 +115,7 @@ class CelestialSimulator {
         this.sun.mesh = new THREE.Mesh(sunGeometry, sunMaterial);
         this.scene.add(this.sun.mesh);
 
-        // µØÇò
+        // åœ°çƒ
         const earthGeometry = new THREE.SphereGeometry(this.earth.radius, 32, 32);
         const earthMaterial = new THREE.MeshBasicMaterial({
             color: 0x3498db,
@@ -89,7 +124,7 @@ class CelestialSimulator {
         this.earth.mesh = new THREE.Mesh(earthGeometry, earthMaterial);
         this.scene.add(this.earth.mesh);
 
-        // ÔÂÇò
+        // æœˆçƒ
         const moonGeometry = new THREE.SphereGeometry(this.moon.radius, 32, 32);
         const moonMaterial = new THREE.MeshBasicMaterial({
             color: 0xcccccc,
@@ -98,48 +133,62 @@ class CelestialSimulator {
         this.moon.mesh = new THREE.Mesh(moonGeometry, moonMaterial);
         this.scene.add(this.moon.mesh);
 
-        // ´´½¨¹ìµÀÏß
+        // åˆ›å»ºè½¨é“çº¿
         this.createOrbitLines();
     }
 
     createOrbitLines() {
-        // µØÇò¹ìµÀ
+        // åœ°çƒè½¨é“ï¼ˆæ¤­åœ†ï¼‰
         const earthOrbitGeometry = new THREE.BufferGeometry();
         const earthOrbitPoints = [];
+        const earthSemiMinor = this.earth.semiMajorAxis * 
+                              Math.sqrt(1 - this.earth.eccentricity * this.earth.eccentricity);
+        const earthFocalDistance = this.earth.semiMajorAxis * this.earth.eccentricity;
+        
         for (let i = 0; i <= 64; i++) {
             const angle = (i / 64) * Math.PI * 2;
-            earthOrbitPoints.push(new THREE.Vector3(
-                Math.cos(angle) * this.earth.distance,
-                0,
-                Math.sin(angle) * this.earth.distance
-            ));
+            const pos = this.getEllipticalPosition(
+                this.earth.semiMajorAxis,
+                this.earth.eccentricity,
+                angle
+            );
+            earthOrbitPoints.push(new THREE.Vector3(pos.x, 0, pos.y));
         }
+        
         earthOrbitGeometry.setFromPoints(earthOrbitPoints);
         const earthOrbitMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
         this.earth.orbitLine = new THREE.Line(earthOrbitGeometry, earthOrbitMaterial);
         this.scene.add(this.earth.orbitLine);
 
-        // ÔÂÇò¹ìµÀ
+        // æœˆçƒè½¨é“ï¼ˆæ¤­åœ†ï¼‰
+        this.moonOrbitContainer = new THREE.Object3D();
+        this.earth.mesh.add(this.moonOrbitContainer); // å°†è½¨é“å®¹å™¨æ·»åŠ åˆ°åœ°çƒ
+        
         const moonOrbitGeometry = new THREE.BufferGeometry();
         const moonOrbitPoints = [];
+        
         for (let i = 0; i <= 32; i++) {
             const angle = (i / 32) * Math.PI * 2;
-            moonOrbitPoints.push(new THREE.Vector3(
-                Math.cos(angle) * this.moon.distance,
-                0,
-                Math.sin(angle) * this.moon.distance
-            ));
+            const pos = this.getEllipticalPosition(
+                this.moon.semiMajorAxis,
+                this.moon.eccentricity,
+                angle
+            );
+            moonOrbitPoints.push(new THREE.Vector3(pos.x, 0, pos.y));
         }
+        
         moonOrbitGeometry.setFromPoints(moonOrbitPoints);
         const moonOrbitMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
         this.moon.orbitLine = new THREE.Line(moonOrbitGeometry, moonOrbitMaterial);
-        this.scene.add(this.moon.orbitLine);
+        this.moonOrbitContainer.add(this.moon.orbitLine); // å°†è½¨é“çº¿æ·»åŠ åˆ°å®¹å™¨
+        
     }
 
     initEvents() {
         document.getElementById('viewMode').addEventListener('change', (e) => {
             this.viewMode = e.target.value;
-            // ÇĞ»»ÊÓÍ¼Ê±ÏÔÊ¾
+          
+            // åˆ‡æ¢è§†å›¾æ—¶æ˜¾ç¤º/éšè—3Dæ¸²æŸ“å™¨
             if (this.viewMode === '3d') {
                 this.renderer.domElement.style.display = 'block';
                 this.canvas.style.display = 'none';
@@ -148,15 +197,16 @@ class CelestialSimulator {
                 this.canvas.style.display = 'block';
             }
         });
-        //ËÙ¶È
+
+        // é€Ÿåº¦
         document.getElementById('timeSpeed').addEventListener('input', (e) => {
             this.timeScale = parseInt(e.target.value);
         });
-        //Æ¤·ô
+        // çš®è‚¤
         document.getElementById('earthTexture').addEventListener('change', (e) => {
             this.earthTexture = e.target.value;
         });
-        //»­ÖĞ»­
+        // ç”»ä¸­ç”»
         document.getElementById('toggleEclipse').addEventListener('click', () => {
             this.showEclipse = !this.showEclipse;
             document.getElementById('pipContainer').style.display =
@@ -165,14 +215,15 @@ class CelestialSimulator {
     }
 
     animate(timestamp) {
-        // ¼ÆËãÊ±¼äÔöÁ¿
+
+        // è®¡ç®—æ—¶é—´å¢é‡
         const deltaTime = timestamp - this.lastTime;
         this.lastTime = timestamp;
 
-        // ¸üĞÂÌìÌåÎ»ÖÃºÍĞı×ª½Ç¶È
+        // æ›´æ–°å¤©ä½“ä½ç½®å’Œæ—‹è½¬è§’åº¦
         this.updateCelestialBodies(deltaTime);
 
-        // ¸ù¾İÊÓÍ¼Ä£Ê½äÖÈ¾
+        // æ ¹æ®è§†å›¾æ¨¡å¼æ¸²æŸ“
         switch (this.viewMode) {
             case 'top':
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -189,111 +240,144 @@ class CelestialSimulator {
                 break;
         }
 
-        // ÏÔÊ¾ÈÕ/ÔÂÊ³
+        // æ˜¾ç¤ºæ—¥/æœˆé£Ÿ
         if (this.showEclipse) {
             this.drawEclipseView();
         }
 
-        // ¼ÌĞø¶¯»­Ñ­»·
+        // ç»§ç»­åŠ¨ç”»å¾ªç¯
         requestAnimationFrame((t) => this.animate(t));
     }
 
     updateCelestialBodies(deltaTime) {
-        // ¼ÆËãĞı×ª½Ç¶È
+        // è®¡ç®—æ—‹è½¬è§’åº¦
         const timeFactor = deltaTime * this.timeScale * 0.01;
 
         this.sun.angle += this.sun.rotationSpeed * timeFactor;
         this.earth.angle += this.earth.rotationSpeed * timeFactor;
         this.earth.orbitAngle = (this.earth.orbitAngle || 0) + this.earth.orbitSpeed * timeFactor;
-        this.earth.orbitAngle = this.earth.orbitAngle % (Math.PI * 2);
         this.moon.angle += this.moon.rotationSpeed * timeFactor;
         this.moon.orbitAngle = (this.moon.orbitAngle || 0) + this.moon.orbitSpeed * timeFactor;
-        this.moon.orbitAngle = this.moon.orbitAngle % (Math.PI * 2);
     }
 
     update3DScene() {
-        // ¸üĞÂÌ«Ñô×Ô×ª
+        // æ›´æ–°å¤ªé˜³è‡ªè½¬
         this.sun.mesh.rotation.y = this.sun.angle;
 
-        // ¸üĞÂµØÇòÎ»ÖÃ(x,y,z)ºÍ×Ô×ª
-        this.earth.mesh.position.set(
-            Math.cos(this.earth.orbitAngle) * this.earth.distance,
-            0,
-            -Math.sin(this.earth.orbitAngle) * this.earth.distance
+        // æ›´æ–°åœ°çƒä½ç½®å’Œè‡ªè½¬
+        const earthPos = this.getEllipticalPosition(
+            this.earth.semiMajorAxis, 
+            this.earth.eccentricity, 
+            this.earth.orbitAngle
         );
+        this.earth.mesh.position.set(earthPos.x, 0, earthPos.y);
         this.earth.mesh.rotation.y = this.earth.angle;
+        
+        // æ ¹æ®å¼€æ™®å‹’ç¬¬äºŒå®šå¾‹è°ƒæ•´åœ°çƒé€Ÿåº¦
+        const earthSpeedFactor = 1 / (earthPos.distance * earthPos.distance);
 
-        // ¸üĞÂÔÂÇòÎ»ÖÃ(x,y,z)ºÍ×Ô×ª 
+        // æ›´æ–°æœˆçƒä½ç½®å’Œè‡ªè½¬
+        const moonRelativePos = this.getEllipticalPosition(
+            this.moon.semiMajorAxis,
+            this.moon.eccentricity,
+            this.moon.orbitAngle
+        );
         this.moon.mesh.position.set(
-            this.earth.mesh.position.x + Math.cos(this.moon.orbitAngle) * this.moon.distance,
+            earthPos.x + moonRelativePos.x,
             0,
-            this.earth.mesh.position.z - Math.sin(this.moon.orbitAngle) * this.moon.distance
+            earthPos.y + moonRelativePos.y
         );
         this.moon.mesh.rotation.y = this.moon.angle;
+
+        // æ ¹æ®å¼€æ™®å‹’ç¬¬äºŒå®šå¾‹è°ƒæ•´æœˆçƒé€Ÿåº¦
+        const moonSpeedFactor = 1 / (moonRelativePos.distance * moonRelativePos.distance);
+
+        // æ›´æ–°è½¨é“è§’åº¦ï¼Œè€ƒè™‘å¼€æ™®å‹’ç¬¬äºŒå®šå¾‹
+        this.earth.orbitAngle += this.earth.orbitSpeed * earthSpeedFactor;
+        this.moon.orbitAngle += this.moon.orbitSpeed * moonSpeedFactor;
     }
 
     drawTopView() {
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
-
-        // »æÖÆÌ«Ñô
+        
+        // ç»˜åˆ¶å¤ªé˜³
         this.drawSun(centerX, centerY);
-
-        // »æÖÆµØÇò¹ìµÀ
-        this.drawOrbit(centerX, centerY, this.earth.distance);
-
-        // ¼ÆËãµØÇòÎ»ÖÃ
-        const earthX = centerX + Math.cos(this.earth.orbitAngle) * this.earth.distance;
-        const earthY = centerY - Math.sin(this.earth.orbitAngle) * this.earth.distance;
-
-        // »æÖÆµØÇò
+        
+        // ç»˜åˆ¶åœ°çƒè½¨é“ï¼ˆæ¤­åœ†ï¼‰
+        this.drawEllipticalOrbit(
+            centerX, 
+            centerY, 
+            this.earth.semiMajorAxis, 
+            this.earth.eccentricity
+        );
+        
+        // è®¡ç®—åœ°çƒä½ç½®
+        const earthPos = this.getEllipticalPosition(
+            this.earth.semiMajorAxis,
+            this.earth.eccentricity,
+            this.earth.orbitAngle
+        );
+        const earthX = centerX + earthPos.x;
+        const earthY = centerY + earthPos.y;
+        
+        // ç»˜åˆ¶åœ°çƒ
         this.drawEarth(earthX, earthY);
-
-        // »æÖÆÔÂÇò¹ìµÀ
-        this.drawOrbit(earthX, earthY, this.moon.distance);
-
-        // ¼ÆËãÔÂÇòÎ»ÖÃ
-        const moonX = earthX + Math.cos(this.moon.orbitAngle) * this.moon.distance;
-        const moonY = earthY - Math.sin(this.moon.orbitAngle) * this.moon.distance;
-
-        // »æÖÆÔÂÇò
+        
+        // ç»˜åˆ¶æœˆçƒè½¨é“ï¼ˆæ¤­åœ†ï¼‰
+        this.drawEllipticalOrbit(
+            earthX, 
+            earthY, 
+            this.moon.semiMajorAxis, 
+            this.moon.eccentricity
+        );
+        
+        // è®¡ç®—æœˆçƒä½ç½®
+        const moonPos = this.getEllipticalPosition(
+            this.moon.semiMajorAxis,
+            this.moon.eccentricity,
+            this.moon.orbitAngle
+        );
+        const moonX = earthX + moonPos.x;
+        const moonY = earthY + moonPos.y;
+        
+        // ç»˜åˆ¶æœˆçƒ
         this.drawMoon(moonX, moonY);
     }
 
     drawSideView() {
-        //Ì«ÑôÎ»ÖÃ
+        //Ì«ï¿½ï¿½Î»ï¿½ï¿½
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
 
-        // ¼ÆËãµØÇòÎ»ÖÃ 
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½ 
         const earthX = centerX + Math.cos(this.earth.orbitAngle) * this.earth.distance;
         const earthY = centerY;
 
-        // ¼ÆËãÔÂÇòÎ»ÖÃ 
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½ 
         const moonX = earthX + Math.cos(this.moon.orbitAngle) * this.moon.distance;
-        const moonY = earthY - Math.sin(this.moon.orbitAngle) * this.moon.distance * 0.3; // YÖáÑ¹Ëõ
+        const moonY = earthY - Math.sin(this.moon.orbitAngle) * this.moon.distance * 0.3; // Yï¿½ï¿½Ñ¹ï¿½ï¿½
 
-        // »æÖÆµØÇò¹ìµÀ 
+        // ï¿½ï¿½ï¿½Æµï¿½ï¿½ï¿½ï¿½ï¿½ 
         this.ctx.beginPath();
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
         this.ctx.moveTo(centerX - this.earth.distance, centerY);
         this.ctx.lineTo(centerX + this.earth.distance, centerY);
         this.ctx.stroke();
 
-
-        //ÕÚµ²ÅĞ¶Ï£¬»æÖÆ²ã´Î
+        //ï¿½Úµï¿½ï¿½Ğ¶Ï£ï¿½ï¿½ï¿½ï¿½Æ²ï¿½ï¿½
         if (this.earth.orbitAngle >= 0 && this.earth.orbitAngle <= Math.PI) {
             if (this.moon.orbitAngle >= 0 && this.moon.orbitAngle <= Math.PI) {
-                // »æÖÆÔÂÇò
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                 this.drawMoon(moonX, moonY);
-                // »æÖÆµØÇò
+                // ï¿½ï¿½ï¿½Æµï¿½ï¿½ï¿½
                 this.drawEarth(earthX, earthY);
             }
             else {
                 this.drawEarth(earthX, earthY);
                 this.drawMoon(moonX, moonY);
             }
-            // »æÖÆÌ«Ñô
+            // ï¿½ï¿½ï¿½ï¿½Ì«ï¿½ï¿½
             this.drawSun(centerX, centerY);
         }
         else {
@@ -308,26 +392,33 @@ class CelestialSimulator {
             }
         }
 
-        // »æÖÆÔÂÇò¹ìµÀ
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         this.ctx.beginPath();
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
         this.ctx.ellipse(
             earthX, earthY,
-            this.moon.distance, this.moon.distance * 0.3, // ÍÖÔ²¹ìµÀ£¬YÖáÑ¹Ëõ
+            this.moon.distance, this.moon.distance * 0.3, // ï¿½ï¿½Ô²ï¿½ï¿½ï¿½ï¿½ï¿½Yï¿½ï¿½Ñ¹ï¿½ï¿½
             0, 0, Math.PI * 2
         );
         this.ctx.stroke();
 
+        // è®¡ç®—æœˆçƒä½ç½®
+        const moonX = earthX + Math.cos(this.moon.orbitAngle) * this.moon.distance;
+        const moonY = earthY + Math.sin(this.moon.orbitAngle) * this.moon.distance * 0.3; // Yï¿½ï¿½Ñ¹ï¿½ï¿½
 
-
-
+        // ç»˜åˆ¶æœˆçƒ
+        this.drawMoon(moonX, moonY);
     }
 
     drawEclipseView() {
-        // Çå³ı»­²¼
+        // æ¸…é™¤ç”»å¸ƒ
         this.pipCtx.clearRect(0, 0, this.pipCanvas.width, this.pipCanvas.height);
 
-        // ¼ì²éÊÇ·ñ·¢ÉúÈÕ/ÔÂÊ³
+        // è®¾ç½®é»‘è‰²èƒŒæ™¯
+        this.pipCtx.fillStyle = '#000000';
+        this.pipCtx.fillRect(0, 0, this.pipCanvas.width, this.pipCanvas.height);
+    
+        // æ£€æŸ¥æ˜¯å¦å‘ç”Ÿæ—¥/æœˆé£Ÿ
         const isSolarEclipse = this.checkSolarEclipse();
         const isLunarEclipse = this.checkLunarEclipse();
 
@@ -335,12 +426,17 @@ class CelestialSimulator {
             this.drawSolarEclipse();
         } else if (isLunarEclipse) {
             this.drawLunarEclipse();
+        } else {
+             // æ²¡æœ‰æ—¥/æœˆé£Ÿæ—¶æ˜¾ç¤ºæç¤ºä¿¡æ¯
+            this.pipCtx.fillStyle = '#ffffff';
+            this.pipCtx.font = '16px Arial';
+            this.pipCtx.fillText('å½“å‰æ— æ—¥/æœˆé£Ÿç°è±¡', 50, 150);
         }
     }
-    //¼òµ¥»æÖÆ£¬ÔİÊ±¾ÍÓÃ²»Í¬´óĞ¡ºÍÑÕÉ«µÄÇò´úÌæ£¬ºóĞø¿ÉÒÔ°ÑÎÒĞ´µÄÉ¾ÁËÀ©Õ¹
+    // ç®€å•ç»˜åˆ¶ï¼Œæš‚æ—¶å°±ç”¨ä¸åŒå¤§å°å’Œé¢œè‰²çš„çƒä»£æ›¿ï¼Œåç»­å¯ä»¥æŠŠæˆ‘å†™çš„åˆ äº†æ‰©å±•
     drawSun(x, y) {
         this.ctx.beginPath();
-        this.ctx.fillStyle = '#ff0000ff';
+        this.ctx.fillStyle = '#ff0000';
         this.ctx.arc(x, y, this.sun.radius, 0, Math.PI * 2);
         this.ctx.fill();
     }
@@ -365,35 +461,39 @@ class CelestialSimulator {
         this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         this.ctx.stroke();
     }
+  
+  
+  
+/*
     checkSolarEclipse() {
         let angleDiff;
-        // Ì«ÑôÔÚÔ­µã£¨½Ç¶È0£©£¬ÅĞ¶ÏÔÂÇòÊÇ·ñÔÚµØÇòºÍÌ«ÑôÖ®¼ä£¨ÈıÕß½üËÆ¹²Ïß£©
+        // Ì«ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ã£¨ï¿½Ç¶ï¿½0ï¿½ï¿½ï¿½ï¿½ï¿½Ğ¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½Úµï¿½ï¿½ï¿½ï¿½Ì«ï¿½ï¿½Ö®ï¿½ä£¨ï¿½ï¿½ï¿½ß½ï¿½ï¿½Æ¹ï¿½ï¿½ß£ï¿½
         if (this.earth.orbitAngle >= 0 && this.earth.orbitAngle <= Math.PI) {
             angleDiff = Math.abs(this.moon.orbitAngle - this.earth.orbitAngle - Math.PI);
         }
         else {
             angleDiff = Math.abs(this.moon.orbitAngle - this.earth.orbitAngle + Math.PI);
         }
-        // ãĞÖµÉèÎª0.1»¡¶È£¨Ô¼5.7¶È£©£¬¿É¸ù¾İĞèÒªµ÷Õû
+        // ï¿½ï¿½Öµï¿½ï¿½Îª0.1ï¿½ï¿½ï¿½È£ï¿½Ô¼5.7ï¿½È£ï¿½ï¿½ï¿½ï¿½É¸ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½
         return angleDiff < 0.5;
     }
 
     checkLunarEclipse() {
-        // ÔÂÊ³Ê±£¬µØÇòÔÚÌ«ÑôºÍÔÂÇòÖ®¼ä£¨ÔÂÇòÓëÌ«Ñô·½ÏòÏà·´£©
+        // ï¿½ï¿½Ê³Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö®ï¿½ä£¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½à·´ï¿½ï¿½
         const angleDiff = Math.abs(this.moon.orbitAngle - this.earth.orbitAngle);
         return angleDiff < 0.5;
     }
 
     drawSolarEclipse() {
-        // ÔÚ»­ÖĞ»­»­²¼»æÖÆÈÕÈ«Ê³Ğ§¹û
+        // ï¿½Ú»ï¿½ï¿½Ğ»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È«Ê³Ğ§ï¿½ï¿½
         const centerX = this.pipCanvas.width / 2;
         const centerY = this.pipCanvas.height / 2;
-        // Ì«Ñô±³¾°
+        // Ì«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         this.pipCtx.fillStyle = '#ffff00';
         this.pipCtx.beginPath();
         this.pipCtx.arc(centerX, centerY, 40, 0, Math.PI * 2);
         this.pipCtx.fill();
-        // ÔÂÇòÕÚµ²
+        // ï¿½ï¿½ï¿½ï¿½ï¿½Úµï¿½
         this.pipCtx.fillStyle = '#000';
         this.pipCtx.beginPath();
         this.pipCtx.arc(centerX, centerY, 30, 0, Math.PI * 2);
@@ -401,15 +501,15 @@ class CelestialSimulator {
     }
 
     drawLunarEclipse() {
-        // ÔÚ»­ÖĞ»­»­²¼»æÖÆÔÂÈ«Ê³Ğ§¹û
+        // ï¿½Ú»ï¿½ï¿½Ğ»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È«Ê³Ğ§ï¿½ï¿½
         const centerX = this.pipCanvas.width / 2;
         const centerY = this.pipCanvas.height / 2;
-        // ÔÂÇò£¨±»µØÇòÒõÓ°ÕÚµ²£©
+        // ï¿½ï¿½ï¿½ò£¨±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó°ï¿½Úµï¿½ï¿½ï¿½
         this.pipCtx.fillStyle = '#333';
         this.pipCtx.beginPath();
         this.pipCtx.arc(centerX, centerY, 30, 0, Math.PI * 2);
         this.pipCtx.fill();
-        // ±ßÔµºì¹â£¨ÔÂÊ³ÌØÕ÷£©
+        // ï¿½ï¿½Ôµï¿½ï¿½â£¨ï¿½ï¿½Ê³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         this.pipCtx.strokeStyle = '#210202ff';
         this.pipCtx.lineWidth = 3;
         this.pipCtx.beginPath();
@@ -417,8 +517,170 @@ class CelestialSimulator {
         this.pipCtx.stroke();
     }
 }
+*/
+    // ä¸‹é¢å››ä¸ªå‡½æ•°æ˜¯æš‚å®šå†™æ—¥é£Ÿå’Œæœˆé£Ÿçš„ï¼Œè¿™é‡Œè¿˜æ²¡å†™
+    checkSolarEclipse() {
+        // è®¡ç®—åœ°çƒåˆ°å¤ªé˜³çš„è·ç¦»
+        const earthPos = this.earth.mesh.position.clone();
+        const sunPos = this.sun.mesh.position.clone();
+        const distance = earthPos.distanceTo(sunPos);
+        
+        // è®¡ç®—æœˆçƒåˆ°åœ°çƒçš„è·ç¦»
+        const moonPos = this.moon.mesh.position.clone();
+        const moonEarthDistance = moonPos.distanceTo(earthPos);
+        
+        // è®¡ç®—ä¸‰ä¸ªå¤©ä½“çš„å¯¹é½ç¨‹åº¦
+        const alignment = moonPos.clone().sub(earthPos).normalize()
+            .dot(sunPos.clone().sub(earthPos).normalize());
+        
+        // å½“æ—¥æœˆåœ°è¿‘ä¼¼åœ¨ä¸€æ¡ç›´çº¿ä¸Š(alignmentæ¥è¿‘1)ä¸”æœˆçƒè·ç¦»åˆé€‚æ—¶å‘ç”Ÿæ—¥é£Ÿ
+        return alignment > 0.995 && moonEarthDistance < 60;
+    }
 
-// Ò³Ãæ¼ÓÔØÍê³Éºó³õÊ¼»¯Ä£ÄâÆ÷
+    checkLunarEclipse() {
+        // è®¡ç®—åœ°çƒåˆ°å¤ªé˜³çš„è·ç¦»
+        const earthPos = this.earth.mesh.position.clone();
+        const sunPos = this.sun.mesh.position.clone();
+        
+        // è®¡ç®—æœˆçƒåˆ°åœ°çƒçš„è·ç¦»
+        const moonPos = this.moon.mesh.position.clone();
+        const moonEarthDistance = moonPos.distanceTo(earthPos);
+        
+        // è®¡ç®—ä¸‰ä¸ªå¤©ä½“çš„å¯¹é½ç¨‹åº¦
+        const alignment = moonPos.clone().sub(earthPos).normalize()
+            .dot(sunPos.clone().sub(earthPos).normalize());
+        
+        // å½“æ—¥æœˆåœ°è¿‘ä¼¼åœ¨ä¸€æ¡ç›´çº¿ä¸Š(alignmentæ¥è¿‘-1)æ—¶å‘ç”Ÿæœˆé£Ÿ
+        return alignment < -0.995;
+    }
+
+    drawSolarEclipse() {
+        const centerX = this.pipCanvas.width / 2;
+        const centerY = this.pipCanvas.height / 2;
+        
+        // è®¡ç®—æœˆçƒçš„è§†ç›´å¾„å’Œå¤ªé˜³çš„è§†ç›´å¾„æ¯”ä¾‹
+        const moonDistance = this.moon.mesh.position.distanceTo(this.earth.mesh.position);
+        const sunDistance = this.sun.mesh.position.distanceTo(this.earth.mesh.position);
+        const moonApparentSize = (this.moon.radius / moonDistance) * 500;
+        const sunApparentSize = (this.sun.radius / sunDistance) * 500;
+        
+        // ç»˜åˆ¶å¤ªé˜³
+        this.pipCtx.beginPath();
+        this.pipCtx.fillStyle = '#ffff00';
+        this.pipCtx.arc(centerX, centerY, sunApparentSize, 0, Math.PI * 2);
+        this.pipCtx.fill();
+        
+        // ç»˜åˆ¶æœˆçƒé˜´å½±
+        this.pipCtx.beginPath();
+        this.pipCtx.fillStyle = '#000000';
+        this.pipCtx.arc(centerX, centerY, moonApparentSize, 0, Math.PI * 2);
+        this.pipCtx.fill();
+        
+        // æ ¹æ®è§†ç›´å¾„æ¯”ä¾‹åˆ¤æ–­æ—¥é£Ÿç±»å‹
+        const sizeRatio = moonApparentSize / sunApparentSize;
+        
+        // æ·»åŠ æ—¥é£Ÿç±»å‹æ–‡å­—è¯´æ˜
+        this.pipCtx.fillStyle = '#ffffff';
+        this.pipCtx.font = '16px Arial';
+
+        if (sizeRatio > 1.05) {
+            // å…¨é£Ÿ
+            this.pipCtx.fillText('æ—¥å…¨é£Ÿ', 10, 30);
+        } else if (sizeRatio > 0.95) {
+            // ç¯é£Ÿ
+            this.pipCtx.fillText('æ—¥ç¯é£Ÿ', 10, 30);
+            // ç»˜åˆ¶ç¯é£Ÿæ•ˆæœ
+            this.pipCtx.beginPath();
+            this.pipCtx.fillStyle = '#ffff00';
+            this.pipCtx.arc(centerX, centerY, sunApparentSize * 0.9, 0, Math.PI * 2);
+            this.pipCtx.fill();
+        } else {
+            // åé£Ÿ
+            this.pipCtx.fillText('æ—¥åé£Ÿ', 10, 30);
+            // ç»˜åˆ¶åé£Ÿæ•ˆæœ
+            this.pipCtx.globalCompositeOperation = 'destination-out';
+            this.pipCtx.beginPath();
+            this.pipCtx.arc(centerX, centerY, moonApparentSize, 0, Math.PI * 2);
+            this.pipCtx.fill();
+            this.pipCtx.globalCompositeOperation = 'source-over';
+        }
+    }
+
+    drawLunarEclipse() {
+        const centerX = this.pipCanvas.width / 2;
+        const centerY = this.pipCanvas.height / 2;
+        
+        // è®¡ç®—æœˆçƒè§†å¤§å°
+        const moonDistance = this.moon.mesh.position.distanceTo(this.earth.mesh.position);
+        const moonApparentSize = (this.moon.radius / moonDistance) * 500;
+        
+        // ç»˜åˆ¶æœˆçƒ
+        this.pipCtx.beginPath();
+        this.pipCtx.fillStyle = '#cccccc';
+        this.pipCtx.arc(centerX, centerY, moonApparentSize, 0, Math.PI * 2);
+        this.pipCtx.fill();
+        
+        // è®¡ç®—åœ°çƒé˜´å½±å¤§å°
+        const earthShadowSize = moonApparentSize * 2.5; // åœ°çƒé˜´å½±å¤§çº¦æ˜¯æœˆçƒçš„2.5å€
+        
+        // ç»˜åˆ¶åœ°çƒé˜´å½±
+        this.pipCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.pipCtx.beginPath();
+        this.pipCtx.arc(centerX, centerY, earthShadowSize, 0, Math.PI * 2);
+        this.pipCtx.fill();
+        
+        // è®¡ç®—é˜´å½±è¦†ç›–ç¨‹åº¦
+        const alignment = this.moon.mesh.position.clone().sub(this.earth.mesh.position).normalize()
+            .dot(this.sun.mesh.position.clone().sub(this.earth.mesh.position).normalize());
+        const coverage = Math.abs(alignment + 1) / 0.01; // 0-1è¡¨ç¤ºè¦†ç›–ç¨‹åº¦
+        
+        // æ·»åŠ æœˆé£Ÿç±»å‹æ–‡å­—è¯´æ˜
+        this.pipCtx.fillStyle = '#ffffff';
+        this.pipCtx.font = '16px Arial';
+        
+        if (coverage > 0.95) {
+            // å…¨é£Ÿ
+            this.pipCtx.fillText('æœˆå…¨é£Ÿ', 10, 30);
+            this.pipCtx.beginPath();
+            this.pipCtx.fillStyle = 'rgba(100, 0, 0, 0.8)'; // æœˆå…¨é£Ÿæ—¶çš„çº¢è‰²
+            this.pipCtx.arc(centerX, centerY, moonApparentSize, 0, Math.PI * 2);
+            this.pipCtx.fill();
+        } else if (coverage > 0.3) {
+            // åé£Ÿ
+            this.pipCtx.fillText('æœˆåé£Ÿ', 10, 30);
+            // ç»˜åˆ¶åé£Ÿæ•ˆæœ
+            const shadowAngle = Math.atan2(
+                this.moon.mesh.position.z - this.earth.mesh.position.z,
+                this.moon.mesh.position.x - this.earth.mesh.position.x
+            );
+            
+            this.pipCtx.save();
+            this.pipCtx.beginPath();
+            this.pipCtx.arc(centerX, centerY, moonApparentSize, 0, Math.PI * 2);
+            this.pipCtx.clip();
+
+            this.pipCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.pipCtx.beginPath();
+            this.pipCtx.arc(
+                centerX + Math.cos(shadowAngle) * moonApparentSize * 0.7,
+                centerY + Math.sin(shadowAngle) * moonApparentSize * 0.7,
+                earthShadowSize * 0.8,
+                0, Math.PI * 2
+            );
+            this.pipCtx.fill();
+            this.pipCtx.restore();
+        } else {
+            // åŠå½±æœˆé£Ÿ
+            this.pipCtx.fillText('åŠå½±æœˆé£Ÿ', 10, 30);
+            this.pipCtx.beginPath();
+            this.pipCtx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            this.pipCtx.arc(centerX, centerY, moonApparentSize, 0, Math.PI * 2);
+            this.pipCtx.fill();
+        }
+    }
+}
+
+// é¡µé¢åŠ è½½å®Œæˆååˆå§‹åŒ–æ¨¡æ‹Ÿå™¨
 window.onload = function () {
     new CelestialSimulator();
 };
